@@ -4,13 +4,30 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.example.vmoney.ui.theme.VMoneyTheme
 
 class MainActivity : ComponentActivity() {
@@ -19,11 +36,12 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             VMoneyTheme {
-                Scaffold( modifier = Modifier.fillMaxSize() ) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                    // เรียกใช้ฟังก์ชันหน้าจอที่เราสร้างไว้
+                    // และใส่ padding เพื่อไม่ให้หน้าจอไปทับกับแถบสถานะด้านบน
+                    Column(modifier = Modifier.padding(innerPadding)) {
+                        AddTransactionScreen()
+                    }
                 }
             }
         }
@@ -31,17 +49,63 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
+fun AddTransactionScreen() {
+    // ตัวแปรสำหรับเก็บค่าที่ผู้ใช้พิมพ์
+    var title by remember { mutableStateOf("") } //mutableStateOf ค่านี้เปลี่ยนแปลงได้
+    var amount by remember { mutableStateOf("") }
+    var selectedType by remember { mutableStateOf(TransactionType.EXPENSE) }
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    VMoneyTheme {
-        Greeting("Android")
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text(text = "เพิ่มรายการใหม่", style = MaterialTheme.typography.headlineMedium)
+
+        // ช่องกรอกชื่อรายการ
+        OutlinedTextField( //กรอกมีมีเส้นขอบสวยงาม
+            value = title,
+            onValueChange = { input ->
+                title = input
+            },
+            label = { Text("ชื่อรายการ") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // ช่องกรอกจำนวนเงิน
+        OutlinedTextField(
+            value = amount,
+            onValueChange = { input ->
+                amount = input
+            },
+            label = { Text("จำนวนเงิน") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // ส่วนเลือก รายรับ / รายจ่าย (ปุ่มกดเลือก)
+        Row(modifier = Modifier.padding(vertical = 8.dp)) {
+            Button(
+                onClick = { selectedType = TransactionType.INCOME },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (selectedType == TransactionType.INCOME) Color.Green else Color.Gray
+                )
+            ) { Text("รายรับ") }
+
+            Spacer(modifier = Modifier.width(8.dp)) //Spacer สร้างช่องว่างระหว่างปุ่ม
+
+            Button(
+                onClick = { selectedType = TransactionType.EXPENSE },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (selectedType == TransactionType.EXPENSE) Color.Red else Color.Gray
+                )
+            ) { Text("รายจ่าย") }
+        }
+
+        Button(
+            onClick = { /* เดี๋ยวเราจะเขียนสั่ง Save ลง Database ตรงนี้ */ },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("บันทึกรายการ")
+        }
     }
 }
+
+
+
