@@ -46,13 +46,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             VMoneyTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    // เรียกใช้ฟังก์ชันหน้าจอที่เราสร้างไว้
-                    // และใส่ padding เพื่อไม่ให้หน้าจอไปทับกับแถบสถานะด้านบน
-                    Column(modifier = Modifier.padding(innerPadding)) {
-                        AddTransactionScreen()
-                    }
-                }
+                val db = AppDatabase.getDatabase(this)
+                // เรียกหน้าจอ Home ตรงนี้เลย!
+                HomeScreen(db)
             }
         }
     }
