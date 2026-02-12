@@ -1,8 +1,13 @@
+package com.example.vmoney.Database
+
 import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import com.example.vmoney.Database.Converters
+import com.example.vmoney.Database.TransactionDao
+import com.example.vmoney.Database.Transaction
 
 //เมื่อมีคนโอนเงิน แอปจะสร้างtransaction(ใบเสร็จ ) ส่งใบเส็จให้ Dao(พนักงาน) พนักงานจะเอาไปเก็บใน appDatabase(ตู้เก็บ)
 @Database(entities = [Transaction::class], version = 1) //database transaction v.1

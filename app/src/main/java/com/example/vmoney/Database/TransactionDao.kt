@@ -1,4 +1,13 @@
-import androidx.room.*
+package com.example.vmoney.Database
+
+import com.example.vmoney.Database.TransactionType
+
+import com.example.vmoney.Database.Transaction
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 
 @Dao //Database Access Obj
@@ -14,5 +23,5 @@ interface TransactionDao {
 
     // ฟังก์ชันเทพ: สรุปยอดรวมแยกตามประเภท (เอาไว้ทำรายรับ-รายจ่ายหักลบกัน)
     @Query("SELECT SUM(amount) FROM transactions WHERE type = :transactionType")
-    fun getTotalAmount(transactionType: String): Flow<Double?>
+    fun getTotalAmount(transactionType: TransactionType): Flow<Double?>
 }
