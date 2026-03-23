@@ -12,12 +12,15 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.VMoney">
         <activity
+            android:name=".AddTransactionScreen"
+            android:exported="false"
+            android:label="@string/title_activity_add_transaction_screen"
+            android:theme="@style/Theme.VMoney" />
+        <activity
             android:name=".HomeScreen"
             android:exported="false"
             android:label="@string/title_activity_home_screen"
-            android:theme="@style/Theme.VMoney">
-
-        </activity>
+            android:theme="@style/Theme.VMoney"></activity>
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -28,7 +31,6 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
         </activity>
     </application>
 

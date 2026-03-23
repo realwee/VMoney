@@ -1,191 +1,164 @@
 package com.example.vmoney
 
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import com.example.vmoney.Database.AppDatabase
-import com.example.vmoney.ui.theme.VMoneyTheme
+import androidx.compose.ui.unit.sp
 
 @Composable
-fun HomeScreen(db: AppDatabase) {
-    // ดึงข้อมูลยอดรวม
-    val totalIncome = 2000.0
-    val totalExpense = 1900.0
-
-    Scaffold(
-        bottomBar = { MyBottomNavigation() } // ส่วนเมนูด้านล่าง
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp)
+fun HomeScreen() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8F9FA)) // พื้นหลังเทาอ่อนนวลๆ ตามรูป
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        // --- 1. ส่วนปฏิทินแบบตารางสี่เหลี่ยม (Calendar Card) ---
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(2.dp),
+            shape = RoundedCornerShape(16.dp)
         ) {
-            // เปลี่ยนจาก Text เดิมมาเป็น CalendarHeader
-            CalendarHeader()
+            Column(modifier = Modifier.padding(16.dp)) {
+                // แถวเดือนและปุ่มเปลี่ยนเดือน
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.KeyboardArrowLeft, contentDescription = null)
+                    Text("February 2026", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Icon(Icons.Default.KeyboardArrowRight, contentDescription = null)
+                }
 
-            Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-            // 2. Summary Cards (Income & Expense)
-            Row(modifier = Modifier.fillMaxWidth()) {
-                SummaryCard(
-                    label = "Income",
-                    amount = totalIncome,
-                    color = Color(0xFFE8F5E9), // เขียวอ่อน
-                    textColor = Color(0xFF2E7D32),
-                    modifier = Modifier.weight(1f)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                SummaryCard(
-                    label = "Expense",
-                    amount = totalExpense,
-                    color = Color(0xFFFFEBEE), // แดงอ่อน
-                    textColor = Color(0xFFC62828),
-                    modifier = Modifier.weight(1f)
-                )
-            }
+                // หัวตารางวัน (S M T W T F S)
+                val days = listOf("S", "M", "T", "W", "T", "F", "S")
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    days.forEach { day ->
+                        Text(
+                            text = day,
+                            modifier = Modifier.weight(1f),
+                            textAlign = TextAlign.Center,
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    }
+                }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // 3. Store List (รายการแยกตามร้านค้าตามแบบร่าง)
-            val stores = listOf("ปฐม" to 10000.0, "ชั้น 2" to 5000.0, "บ้าน" to 3000.0)
-
-            LazyColumn {
-                items(stores) { (name, budget) ->
-                    StoreItem(name, budget)
+                // ตัวเลขวันที่ (ใช้ chunked แบ่งเป็นสัปดาห์ละ 7 วัน)
+                val dates = (1..28).toList()
+                dates.chunked(7).forEach { week ->
+                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                        week.forEach { date ->
+                            Text(
+                                text = date.toString(),
+                                modifier = Modifier.weight(1f),
+                                textAlign = TextAlign.Center,
+                                fontSize = 12.sp,
+                                fontWeight = if (date == 23) FontWeight.Bold else FontWeight.Normal, // สมมติวันนี้วันที่ 23
+                                color = if (date == 23) Color(0xFF5EB5F3) else Color.Black
+                            )
+                        }
+                    }
                 }
             }
         }
-    }
-}
 
-@Composable
-fun SummaryCard(label: String, amount: Double, color: Color, textColor: Color, modifier: Modifier) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = color),
-        modifier = modifier.height(100.dp)
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(12.dp),
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(text = label, style = MaterialTheme.typography.labelMedium, color = textColor)
-            Text(text = "$amount THB", style = MaterialTheme.typography.titleLarge, color = textColor)
-        }
-    }
-}
+        Spacer(modifier = Modifier.height(20.dp))
 
-@Composable
-fun StoreItem(name: String, amount: Double) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        border = BorderStroke(1.dp, Color.LightGray),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
+        // --- 2. ส่วนสรุปรายรับ-รายจ่าย (Summary Cards) ---
         Row(
-            modifier = Modifier.padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(text = name, style = MaterialTheme.typography.bodyLarge)
-            Text(text = "$amount", style = MaterialTheme.typography.bodyLarge)
+            SummaryCardItem("รายรับ", "2000.00 THB", modifier = Modifier.weight(1f))
+            SummaryCardItem("รายจ่าย", "1000.00 THB", modifier = Modifier.weight(1f))
         }
-    }
-}
 
-@Composable
-fun MyBottomNavigation() {
-    NavigationBar {
-        NavigationBarItem(selected = true, onClick = {}, icon = { Icon(Icons.Default.Home, "Home") }, label = { Text("Home") })
-        NavigationBarItem(selected = false, onClick = {}, icon = { Icon(Icons.Default.Add, "Add") }, label = { Text("Add") })
-        NavigationBarItem(selected = false, onClick = {}, icon = { Icon(Icons.Default.Refresh, "Graph") }, label = { Text("Graph") })
-        NavigationBarItem(selected = false, onClick = {}, icon = { Icon(Icons.Default.Settings, "Settings") }, label = { Text("Settings") })
-    }
-}
+        Spacer(modifier = Modifier.height(24.dp))
 
-@Composable
-fun CalendarHeader() {
-    // ดึงวันที่ปัจจุบัน
-    val calendar = java.util.Calendar.getInstance()
-    val today = calendar.get(java.util.Calendar.DAY_OF_MONTH)
-
-    // สร้างรายการวันที่ (สมมติว่าเป็นวันที่ 1-28 ของเดือนกุมภาพันธ์)
-    val days = (1..28).toList()
-
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        // --- 3. รายการธุรกรรมล่าสุด (Transaction List) ---
         Text(
-            text = "February",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(bottom = 16.dp)
+            text = "Recent Transactions",
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            items(days) { day ->
-                val isSelected = day == today // เช็คว่าเป็นวันนี้หรือไม่
+        TransactionItem("ร้านปฐม", "10,000.00", "3 ก.พ. 2569")
+        TransactionItem("ร้านบ้าน", "5,000.00", "3 ก.พ. 2569")
+        TransactionItem("ชั้น 2", "3,000.00", "3 ก.พ. 2569")
+    }
+}
 
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .width(45.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        // ถ้าเป็นวันนี้ให้ใส่พื้นหลังสีอ่อนๆ หรือวงกลม
-                        .background(if (isSelected) Color(0xFFBBDEFB) else Color.Transparent)
-                        .padding(vertical = 8.dp)
-                ) {
-                    Text(
-                        text = day.toString(),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = if (isSelected) Color.Blue else Color.Black,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                    )
-                    // เพิ่มจุดเล็กๆ หรือชื่อวันสั้นๆ ใต้วันที่ได้
-                    Text(
-                        text = "Feb",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.Gray
-                    )
-                }
+// --- Component ย่อย: การ์ดสรุป ---
+@Composable
+fun SummaryCardItem(label: String, amount: String, modifier: Modifier) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(2.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(label, color = Color(0xFF5EB5F3), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text(amount, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+            Divider(thickness = 0.5.dp, color = Color.LightGray)
+            Text(
+                text = "เพิ่มรายการ",
+                fontSize = 10.sp,
+                textDecoration = TextDecoration.Underline,
+                color = Color.Gray,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+    }
+}
+
+// --- Component ย่อย: รายการธุรกรรม ---
+@Composable
+fun TransactionItem(title: String, price: String, date: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(1.dp),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(date, fontSize = 10.sp, color = Color.Gray)
             }
+            Text(
+                text = "$price THB",
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF5EB5F3),
+                fontSize = 14.sp
+            )
         }
     }
 }
