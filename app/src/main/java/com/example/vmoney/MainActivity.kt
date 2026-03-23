@@ -43,7 +43,7 @@ class MainActivity : ComponentActivity() {
                 ) { innerPadding ->
                     Box(modifier = Modifier.padding(innerPadding)) {
                         when (currentScreen) {
-                            0 -> HomeScreen()           // ต้องมีไฟล์ HomeScreen.kt
+                            0 -> HomeScreen{}          // ต้องมีไฟล์ HomeScreen.kt
                             1 -> AddTransactionScreen()  // ต้องมีไฟล์ AddTransactionScreen.kt
                             else -> Text("หน้าจอนี้กำลังพัฒนา")
                         }
