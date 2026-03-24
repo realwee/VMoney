@@ -12,6 +12,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.VMoney">
         <activity
+            android:name=".StoreScreenDetail"
+            android:exported="false"
+            android:label="@string/title_activity_store_screen_detail"
+            android:theme="@style/Theme.VMoney" />
+        <activity
             android:name=".AddTransactionScreen"
             android:exported="false"
             android:label="@string/title_activity_add_transaction_screen"
@@ -20,7 +25,7 @@
             android:name=".HomeScreen"
             android:exported="false"
             android:label="@string/title_activity_home_screen"
-            android:theme="@style/Theme.VMoney"></activity>
+            android:theme="@style/Theme.VMoney" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

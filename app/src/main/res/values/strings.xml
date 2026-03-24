@@ -3,4 +3,5 @@
     <string name="title_activity_home_screen.kt">HomeScreen.kt</string>
     <string name="title_activity_home_screen">HomeScreen</string>
     <string name="title_activity_add_transaction_screen">AddTransactionScreen</string>
+    <string name="title_activity_store_screen_detail">StoreScreenDetail</string>
 </resources>

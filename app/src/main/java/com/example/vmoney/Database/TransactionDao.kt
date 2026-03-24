@@ -24,4 +24,12 @@ interface TransactionDao {
     // ฟังก์ชันเทพ: สรุปยอดรวมแยกตามประเภท (เอาไว้ทำรายรับ-รายจ่ายหักลบกัน)
     @Query("SELECT SUM(amount) FROM transactions WHERE type = :transactionType")
     fun getTotalAmount(transactionType: TransactionType): Flow<Double?>
+
+    // ดึงข้อมูลรายการของร้านค้านั้นๆ เท่านั้น
+    @Query("SELECT * FROM transactions WHERE category = :category ORDER BY date DESC")
+    fun getTransactionsByCategory(category: com.example.vmoney.Database.TransactionCategory): Flow<List<Transaction>>
+
+    // คำนวณยอดรวมของร้านค้านั้นๆ แยกตาม รายรับ/รายจ่าย
+    @Query("SELECT SUM(amount) FROM transactions WHERE category = :category AND type = :transactionType")
+    fun getTotalAmountByCategory(category: com.example.vmoney.Database.TransactionCategory, transactionType: TransactionType): Flow<Double?>
 }

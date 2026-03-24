@@ -22,8 +22,14 @@ import androidx.compose.ui.unit.sp
 import java.text.SimpleDateFormat
 import java.util.*
 
+
+
+import com.example.vmoney.Database.TransactionCategory
+
 @Composable
-fun HomeScreen(onAddClick: () -> Unit) {
+fun HomeScreen(onAddClick: () -> Unit,onStoreClick: (TransactionCategory) -> Unit) {
+    var selectedStore by remember { mutableStateOf<TransactionCategory?>(null) }
+
     Column(
         modifier = Modifier.fillMaxSize().background(Color(0xFFF8F9FA)).verticalScroll(rememberScrollState()).padding(16.dp)
     ) {
@@ -34,9 +40,26 @@ fun HomeScreen(onAddClick: () -> Unit) {
             SummaryCardItem("รายจ่าย", "1000.00 THB", onAddClick, modifier = Modifier.weight(1f))
         }
         Spacer(modifier = Modifier.height(24.dp))
-        Text("Recent Transactions", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        TransactionItem("ร้านปฐม", "10,000.00", "3 ก.พ. 2569")
-        TransactionItem("ร้านบ้าน", "5,000.00", "3 ก.พ. 2569")
+        Text(
+            text = if (selectedStore == null) "Recent Transactions" else "รายการของ: ${selectedStore?.displayName}",
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp
+        )
+
+        TransactionItem("ร้านปฐม", "10,000.00", "3 ก.พ. 2569", onClick = { 
+            selectedStore = TransactionCategory.PRIMARY_STORE
+            onStoreClick(TransactionCategory.PRIMARY_STORE) 
+        })
+        TransactionItem("ร้านชั้น2", "5,000.00", "3 ก.พ. 2569", onClick = { 
+            selectedStore = TransactionCategory.SECONDFLOOR_STORE
+            onStoreClick(TransactionCategory.SECONDFLOOR_STORE)
+        })
+
+        if (selectedStore != null) {
+            TextButton(onClick = { selectedStore = null }) {
+                Text("ดูรายการทั้งหมด", color = MainBlue)
+            }
+        }
     }
 }
 
@@ -147,17 +170,28 @@ fun SummaryCardItem(label: String, amount: String, onAddClick: () -> Unit, modif
             Text(label, color = MainBlue, fontWeight = FontWeight.Bold)
             Text(amount, fontWeight = FontWeight.Bold)
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp)
-            Text("เพิ่มรายการ", fontSize = 10.sp, textDecoration = TextDecoration.Underline, color = Color.Gray, modifier = Modifier.clickable { onAddClick() })
+            Text("เพิ่มรายการ", modifier = Modifier.clickable { onAddClick() }, fontSize = 10.sp, textDecoration = TextDecoration.Underline, color = Color.Gray)
         }
     }
 }
 
 @Composable
-fun TransactionItem(title: String, price: String, date: String) {
-    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(1.dp)) {
-        Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            Column { Text(title, fontWeight = FontWeight.Bold); Text(date, fontSize = 10.sp, color = Color.Gray) }
+fun TransactionItem(title: String, price: String, date: String, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable { onClick() }, // แก้ไข: ใส่ lambda onClick ตรงนี้
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(1.dp)
+    ) {
+        Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Column {
+                Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(date, fontSize = 10.sp, color = Color.Gray)
+            }
             Text("$price THB", fontWeight = FontWeight.Bold, color = MainBlue)
         }
     }
 }
+

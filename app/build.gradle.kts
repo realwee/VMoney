@@ -7,14 +7,12 @@ plugins {
 
 android {
     namespace = "com.example.vmoney"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.vmoney"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -54,6 +52,7 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.ui.text)
     implementation(libs.androidx.material3)
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
     implementation(libs.espresso.core)
     implementation("androidx.compose.material:material-icons-extended:1.6.0")
     implementation(libs.androidx.foundation)

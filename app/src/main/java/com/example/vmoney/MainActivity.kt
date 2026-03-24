@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -17,6 +18,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.vmoney.ui.theme.VMoneyTheme
+
+
 
 // สีหลักฟ้าสดใสตามดีไซน์
 val MainBlue = Color(0xFF5EB5F3)
@@ -29,6 +32,7 @@ class MainActivity : ComponentActivity() {
             VMoneyTheme {
                 // ตัวแปรเก็บหน้าปัจจุบัน (0=Home, 1=Add, 2=Graph, 3=Setting)
                 var currentScreen by remember { mutableStateOf(0) }
+                var selectedCategory by remember { mutableStateOf<com.example.vmoney.Database.TransactionCategory?>(null) }
 
                 Scaffold(
                     topBar = {
@@ -43,9 +47,31 @@ class MainActivity : ComponentActivity() {
                 ) { innerPadding ->
                     Box(modifier = Modifier.padding(innerPadding)) {
                         when (currentScreen) {
-                            0 -> HomeScreen{}          // ต้องมีไฟล์ HomeScreen.kt
-                            1 -> AddTransactionScreen()  // ต้องมีไฟล์ AddTransactionScreen.kt
-                            else -> Text("หน้าจอนี้กำลังพัฒนา")
+                            0 -> HomeScreen(
+                                onAddClick = { currentScreen = 1 },
+                                onStoreClick = { category ->
+                                    // เมื่อกดที่ร้านค้าในหน้า Home
+                                    selectedCategory = category
+                                    currentScreen = 4
+                                } // เปลี่ยนไปหน้า Detail
+                            )
+
+                            1 -> AddTransactionScreen()
+                            4 -> {
+                                selectedCategory?.let { category ->
+                                    StoreDetailScreen(
+                                        category = category,
+                                        onBack = { 
+                                            currentScreen = 0 
+                                            selectedCategory = null
+                                        },
+                                        onAddClick = {
+                                            currentScreen = 1
+                                        }
+                                    )
+                                }
+                            }
+                            else -> Text("Coming Soon")
                         }
                     }
                 }
