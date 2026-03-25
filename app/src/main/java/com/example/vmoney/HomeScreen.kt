@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.vmoney.Database.TransactionCategory
+import com.example.vmoney.Database.Transaction
+import com.example.vmoney.Database.TransactionType
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -43,7 +45,7 @@ fun HomeScreen(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        CalendarCard()
+        CalendarCard(viewModel = viewModel)
         Spacer(modifier = Modifier.height(20.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             SummaryCardItem("รายรับ", formattedIncome, onAddClick, modifier = Modifier.weight(1f))
@@ -75,6 +77,76 @@ fun HomeScreen(
             category = TransactionCategory.HOME_STORE,
             onClick = { onStoreClick(TransactionCategory.HOME_STORE) }
         )
+
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        val selectedMillis by viewModel.selectedDateMillis.collectAsState()
+        val startOfDay = Calendar.getInstance().apply { 
+            timeInMillis = selectedMillis
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val endOfDay = Calendar.getInstance().apply { 
+            timeInMillis = selectedMillis
+            set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59); set(Calendar.SECOND, 59); set(Calendar.MILLISECOND, 999)
+        }.timeInMillis
+
+        val dailyTransactions by viewModel.getTransactionsByDateRange(startOfDay, endOfDay).collectAsState(initial = emptyList())
+        
+        val dateFormate = SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH)
+        Text(
+            text = "รายการวันที่ ${dateFormate.format(Date(selectedMillis))}",
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            color = MainBlue
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        if (dailyTransactions.isEmpty()) {
+            Text(
+                "ไม่มีรายการในวันนี้",
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                textAlign = TextAlign.Center,
+                color = Color.Gray
+            )
+        } else {
+            dailyTransactions.forEach { transaction ->
+                TransactionListItem(transaction = transaction)
+            }
+        }
+        Spacer(modifier = Modifier.height(24.dp)) // padding at bottom
+    }
+}
+
+@Composable
+fun TransactionListItem(transaction: Transaction) {
+    val isIncome = transaction.type == TransactionType.INCOME
+    val color = if (isIncome) Color(0xFF4CAF50) else Color.Red
+    val sign = if (isIncome) "+" else "-"
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(1.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(transaction.title + " (${transaction.category.displayName})", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                if (transaction.note.isNotBlank()) {
+                    Text(transaction.note, fontSize = 12.sp, color = Color.Gray)
+                }
+            }
+            Text(
+                text = "$sign${String.format(Locale.US, "%.2f", transaction.amount)} THB",
+                fontWeight = FontWeight.Bold,
+                color = color
+            )
+        }
     }
 }
 
@@ -117,15 +189,19 @@ fun StoreProfitItem(
 }
 
 @Composable
-fun CalendarCard() {
-    val calendar = remember { Calendar.getInstance() }
-    var currentMonth by remember { mutableIntStateOf(calendar.get(Calendar.MONTH)) }
-    var currentYear by remember { mutableIntStateOf(calendar.get(Calendar.YEAR)) }
+fun CalendarCard(viewModel: TransactionViewModel) {
+    val selectedDateMillis by viewModel.selectedDateMillis.collectAsState()
+    val selectedCal = remember(selectedDateMillis) { Calendar.getInstance().apply { timeInMillis = selectedDateMillis } }
+    
+    var currentMonth by remember { mutableIntStateOf(selectedCal.get(Calendar.MONTH)) }
+    var currentYear by remember { mutableIntStateOf(selectedCal.get(Calendar.YEAR)) }
 
     val todayCal = Calendar.getInstance()
     val todayNum = (todayCal.get(Calendar.YEAR) * 10000) + ((todayCal.get(Calendar.MONTH) + 1) * 100) + todayCal.get(Calendar.DAY_OF_MONTH)
 
-    var selectedDay by remember { mutableStateOf<Int?>(if (currentMonth == todayCal.get(Calendar.MONTH)) todayCal.get(Calendar.DAY_OF_MONTH) else null) }
+    val selectedDay = if (currentMonth == selectedCal.get(Calendar.MONTH) && currentYear == selectedCal.get(Calendar.YEAR)) {
+        selectedCal.get(Calendar.DAY_OF_MONTH)
+    } else null
 
     val monthName = remember(currentMonth, currentYear) {
         val cal = Calendar.getInstance().apply {
@@ -148,14 +224,12 @@ fun CalendarCard() {
             ) {
                 IconButton(onClick = {
                     if (currentMonth == 0) { currentMonth = 11; currentYear-- } else { currentMonth-- }
-                    selectedDay = null 
                 }) { Icon(Icons.Default.KeyboardArrowLeft, null) }
 
                 Text(monthName, fontWeight = FontWeight.Bold)
 
                 IconButton(onClick = {
                     if (currentMonth == 11) { currentMonth = 0; currentYear++ } else { currentMonth++ }
-                    selectedDay = null
                 }) { Icon(Icons.Default.KeyboardArrowRight, null) }
             }
 
@@ -190,7 +264,14 @@ fun CalendarCard() {
                                     .padding(2.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(if (isSelected) MainBlue else Color.Transparent)
-                                    .clickable(enabled = !isFuture) { selectedDay = date },
+                                    .clickable(enabled = !isFuture) { 
+                                        val newDate = Calendar.getInstance().apply {
+                                            set(Calendar.YEAR, currentYear)
+                                            set(Calendar.MONTH, currentMonth)
+                                            set(Calendar.DAY_OF_MONTH, date)
+                                        }
+                                        viewModel.setSelectedDate(newDate.timeInMillis)
+                                    },
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(

@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -42,5 +43,17 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch(Dispatchers.IO) {
             dao.insertTransaction(transaction)
         }
+    }
+
+    // --- CALENDAR STATE ---
+    private val _selectedDateMillis = kotlinx.coroutines.flow.MutableStateFlow(System.currentTimeMillis())
+    val selectedDateMillis: StateFlow<Long> = _selectedDateMillis.asStateFlow()
+
+    fun setSelectedDate(millis: Long) {
+        _selectedDateMillis.value = millis
+    }
+
+    fun getTransactionsByDateRange(startOfDay: Long, endOfDay: Long): Flow<List<Transaction>> {
+        return dao.getTransactionsByDateRange(startOfDay, endOfDay)
     }
 }

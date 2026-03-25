@@ -86,4 +86,7 @@ dependencies {
     implementation("com.google.ai.client.generativeai:generativeai:0.7.0")
     // Coil for async image loading
     implementation("io.coil-kt:coil-compose:2.6.0")
+
+    // WorkManager for daily notifications
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
 }

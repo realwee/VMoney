@@ -32,4 +32,8 @@ interface TransactionDao {
     // คำนวณยอดรวมของร้านค้านั้นๆ แยกตาม รายรับ/รายจ่าย
     @Query("SELECT SUM(amount) FROM transactions WHERE category = :category AND type = :transactionType")
     fun getTotalAmountByCategory(category: com.example.vmoney.Database.TransactionCategory, transactionType: TransactionType): Flow<Double?>
+
+    // ดึงข้อมูลรายการของวันที่กำหนด
+    @Query("SELECT * FROM transactions WHERE date >= :startOfDay AND date <= :endOfDay ORDER BY date DESC")
+    fun getTransactionsByDateRange(startOfDay: Long, endOfDay: Long): Flow<List<Transaction>>
 }

@@ -1,9 +1,14 @@
 package com.example.vmoney
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -18,15 +23,37 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.vmoney.ui.theme.VMoneyTheme
-
-
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import java.util.concurrent.TimeUnit
 
 // สีหลักฟ้าสดใสตามดีไซน์
 val MainBlue = Color(0xFF5EB5F3)
 
 class MainActivity : ComponentActivity() {
+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            scheduleDailyNotification()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                scheduleDailyNotification()
+            }
+        } else {
+            scheduleDailyNotification()
+        }
+
         enableEdgeToEdge()
         setContent {
             VMoneyTheme {
@@ -36,7 +63,18 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(
                     topBar = {
-                        MyTopBar(title = if (currentScreen == 0) "HOME" else "ADD TRANSACTION")
+                        val screenTitle = when (currentScreen) {
+                            0 -> "HOME"
+                            1 -> "ADD TRANSACTION"
+                            2 -> "GRAPH"
+                            3 -> "SETTING"
+                            5 -> "NOTIFICATIONS"
+                            else -> "ADD TRANSACTION"
+                        }
+                        MyTopBar(
+                            title = screenTitle,
+                            onNotificationClick = { currentScreen = 5 }
+                        )
                     },
                     bottomBar = {
                         MyBottomNavigation(
@@ -73,6 +111,7 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             }
+                            5 -> NotificationScreen()
                             else -> Text("Coming Soon")
                         }
                     }
@@ -80,11 +119,36 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    private fun scheduleDailyNotification() {
+        val currentDate = java.util.Calendar.getInstance()
+        val dueDate = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 22)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        
+        if (dueDate.before(currentDate)) {
+            dueDate.add(java.util.Calendar.HOUR_OF_DAY, 24)
+        }
+        val timeDiff = dueDate.timeInMillis - currentDate.timeInMillis
+        
+        val workRequest = PeriodicWorkRequestBuilder<NotificationWorker>(24, TimeUnit.HOURS)
+            .setInitialDelay(timeDiff, TimeUnit.MILLISECONDS)
+            .build()
+            
+        WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
+            "daily_reminder_2200",
+            ExistingPeriodicWorkPolicy.REPLACE,
+            workRequest
+        )
+    }
 }
 
 // --- ฟังก์ชัน MyTopBar (ที่เคย Error) ---
 @Composable
-fun MyTopBar(title: String) {
+fun MyTopBar(title: String, onNotificationClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -101,7 +165,9 @@ fun MyTopBar(title: String) {
         Text(text = title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
 
         // ไอคอนกระดิ่งแจ้งเตือนด้านขวา
-        Icon(imageVector = Icons.Default.Notifications, contentDescription = null, tint = Color.White)
+        IconButton(onClick = onNotificationClick) {
+            Icon(imageVector = Icons.Default.Notifications, contentDescription = null, tint = Color.White)
+        }
     }
 }
 

@@ -69,7 +69,7 @@ fun AddTransactionScreen(
 
                 val inputContent = content {
                     image(bitmap)
-                    text("Extract the total amount (price) from this receipt. Try to also identify what it was for. Return ONLY in format: PRICE|NOTE. For example: 120.50|ซื้อกาแฟและขนมปัง")
+                    text("Extract all individual items and their prices from this receipt. DO NOT extract the total amount. Respond ONLY with a valid JSON array of objects in this exact format, with no markdown formatting or backticks: [{\"name\": \"Coffee\", \"price\": 50.0}, {\"name\": \"Cake\", \"price\": 70.0}]")
                 }
 
                 val response = withContext(Dispatchers.IO) {
@@ -77,16 +77,26 @@ fun AddTransactionScreen(
                 }
 
                 val textResponse = response.text?.trim() ?: ""
-                if (textResponse.contains("|")) {
-                    val parts = textResponse.split("|")
-                    val extractedPrice = parts[0].trim().replace(Regex("[^0-9.]"), "")
-                    val extractedNote = parts[1].trim()
+                val cleanJson = textResponse.replace("```json", "").replace("```", "").trim()
+                
+                try {
+                    val jsonArray = org.json.JSONArray(cleanJson)
+                    var sumPrice = 0.0
+                    val items = mutableListOf<String>()
                     
-                    price = extractedPrice
-                    note = extractedNote
-                    Toast.makeText(context, "AI แยกข้อมูลสำเร็จ", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(context, "AI ไม่สามารถอ่านข้อมูลได้ชัดเจน", Toast.LENGTH_SHORT).show()
+                    for (i in 0 until jsonArray.length()) {
+                        val obj = jsonArray.getJSONObject(i)
+                        val n = obj.optString("name", "")
+                        val p = obj.optDouble("price", 0.0)
+                        sumPrice += p
+                        if (n.isNotEmpty()) items.add("$n (฿$p)")
+                    }
+                    
+                    price = sumPrice.toString()
+                    note = items.joinToString(", ")
+                    Toast.makeText(context, "AI แยกรายการสินค้าสำเร็จ", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Toast.makeText(context, "AI ไม่สามารถอ่านข้อมูลเป็นรายการได้", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 Toast.makeText(context, "เกิดข้อผิดพลาด AI: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -323,7 +333,7 @@ fun AddTransactionScreen(
                             amount = amountValue,
                             type = if (isIncome) TransactionType.INCOME else TransactionType.EXPENSE,
                             category = selectedCategory,
-                            date = System.currentTimeMillis(),
+                            date = viewModel.selectedDateMillis.value,
                             note = note
                         )
                         viewModel.insertTransaction(transaction)
