@@ -19,46 +19,99 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.vmoney.Database.TransactionCategory
 import java.text.SimpleDateFormat
 import java.util.*
 
-
-
-import com.example.vmoney.Database.TransactionCategory
-
 @Composable
-fun HomeScreen(onAddClick: () -> Unit,onStoreClick: (TransactionCategory) -> Unit) {
-    var selectedStore by remember { mutableStateOf<TransactionCategory?>(null) }
+fun HomeScreen(
+    viewModel: TransactionViewModel = viewModel(),
+    onAddClick: () -> Unit,
+    onStoreClick: (TransactionCategory) -> Unit
+) {
+    val totalIncome by viewModel.getTotalIncome().collectAsState(initial = 0.0)
+    val totalExpense by viewModel.getTotalExpense().collectAsState(initial = 0.0)
+    
+    val formattedIncome = String.format(Locale.US, "%.2f THB", totalIncome ?: 0.0)
+    val formattedExpense = String.format(Locale.US, "%.2f THB", totalExpense ?: 0.0)
 
     Column(
-        modifier = Modifier.fillMaxSize().background(Color(0xFFF8F9FA)).verticalScroll(rememberScrollState()).padding(16.dp)
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8F9FA))
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
     ) {
         CalendarCard()
         Spacer(modifier = Modifier.height(20.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            SummaryCardItem("รายรับ", "2000.00 THB", onAddClick, modifier = Modifier.weight(1f))
-            SummaryCardItem("รายจ่าย", "1000.00 THB", onAddClick, modifier = Modifier.weight(1f))
+            SummaryCardItem("รายรับ", formattedIncome, onAddClick, modifier = Modifier.weight(1f))
+            SummaryCardItem("รายจ่าย", formattedExpense, onAddClick, modifier = Modifier.weight(1f))
         }
         Spacer(modifier = Modifier.height(24.dp))
+        
         Text(
-            text = if (selectedStore == null) "Recent Transactions" else "รายการของ: ${selectedStore?.displayName}",
+            text = "สรุปร้านค้า (กำไร/ขาดทุน)",
             fontWeight = FontWeight.Bold,
-            fontSize = 16.sp
+            fontSize = 16.sp,
+            color = MainBlue
         )
+        Spacer(modifier = Modifier.height(8.dp))
 
-        TransactionItem("ร้านปฐม", "10,000.00", "3 ก.พ. 2569", onClick = { 
-            selectedStore = TransactionCategory.PRIMARY_STORE
-            onStoreClick(TransactionCategory.PRIMARY_STORE) 
-        })
-        TransactionItem("ร้านชั้น2", "5,000.00", "3 ก.พ. 2569", onClick = { 
-            selectedStore = TransactionCategory.SECONDFLOOR_STORE
-            onStoreClick(TransactionCategory.SECONDFLOOR_STORE)
-        })
+        // Showing standard stores
+        StoreProfitItem(
+            name = "ร้านปฐม",
+            category = TransactionCategory.PRIMARY_STORE,
+            onClick = { onStoreClick(TransactionCategory.PRIMARY_STORE) }
+        )
+        StoreProfitItem(
+            name = "ร้านชั้น2",
+            category = TransactionCategory.SECONDFLOOR_STORE,
+            onClick = { onStoreClick(TransactionCategory.SECONDFLOOR_STORE) }
+        )
+        StoreProfitItem(
+            name = "ร้านที่บ้าน",
+            category = TransactionCategory.HOME_STORE,
+            onClick = { onStoreClick(TransactionCategory.HOME_STORE) }
+        )
+    }
+}
 
-        if (selectedStore != null) {
-            TextButton(onClick = { selectedStore = null }) {
-                Text("ดูรายการทั้งหมด", color = MainBlue)
-            }
+@Composable
+fun StoreProfitItem(
+    name: String, 
+    category: TransactionCategory, 
+    viewModel: TransactionViewModel = viewModel(),
+    onClick: () -> Unit
+) {
+    val income by viewModel.getTotalIncomeByCategory(category).collectAsState(initial = 0.0)
+    val expense by viewModel.getTotalExpenseByCategory(category).collectAsState(initial = 0.0)
+    
+    val profit = (income ?: 0.0) - (expense ?: 0.0)
+    val isProfit = profit >= 0
+    val formattedProfit = String.format(Locale.US, "%.2f THB", profit)
+    val color = if (isProfit) Color(0xFF4CAF50) else Color.Red
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(1.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp), 
+            horizontalArrangement = Arrangement.SpaceBetween, 
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(
+                text = "${if (isProfit) "+" else ""}$formattedProfit", 
+                fontWeight = FontWeight.Bold, 
+                color = color
+            )
         }
     }
 }
@@ -72,7 +125,6 @@ fun CalendarCard() {
     val todayCal = Calendar.getInstance()
     val todayNum = (todayCal.get(Calendar.YEAR) * 10000) + ((todayCal.get(Calendar.MONTH) + 1) * 100) + todayCal.get(Calendar.DAY_OF_MONTH)
 
-    // เก็บวันที่เลือก (ใช้ null ได้ถ้ายังไม่ได้จิ้มในเดือนนั้นๆ)
     var selectedDay by remember { mutableStateOf<Int?>(if (currentMonth == todayCal.get(Calendar.MONTH)) todayCal.get(Calendar.DAY_OF_MONTH) else null) }
 
     val monthName = remember(currentMonth, currentYear) {
@@ -89,7 +141,6 @@ fun CalendarCard() {
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // ส่วนหัว: ปุ่มเปลี่ยนเดือน
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -97,7 +148,7 @@ fun CalendarCard() {
             ) {
                 IconButton(onClick = {
                     if (currentMonth == 0) { currentMonth = 11; currentYear-- } else { currentMonth-- }
-                    selectedDay = null // ล้างวันที่เลือกเมื่อเปลี่ยนเดือน
+                    selectedDay = null 
                 }) { Icon(Icons.Default.KeyboardArrowLeft, null) }
 
                 Text(monthName, fontWeight = FontWeight.Bold)
@@ -113,16 +164,14 @@ fun CalendarCard() {
                 days.forEach { Text(it, Modifier.weight(1f), textAlign = TextAlign.Center, fontSize = 12.sp, color = Color.Gray) }
             }
 
-            // --- Logic ใหม่: คำนวณวันเริ่มต้นของเดือน ---
             val cal = Calendar.getInstance().apply {
                 set(Calendar.YEAR, currentYear)
                 set(Calendar.MONTH, currentMonth)
                 set(Calendar.DAY_OF_MONTH, 1)
             }
-            val firstDayOfWeek = cal.get(Calendar.DAY_OF_WEEK) - 1 // 0=Sun, 1=Mon...
+            val firstDayOfWeek = cal.get(Calendar.DAY_OF_WEEK) - 1 
             val maxDays = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
 
-            // สร้างรายการวันที่รวมกับช่องว่างข้างหน้า
             val totalSlots = (1..maxDays).toList()
             val gridItems = List(firstDayOfWeek) { null } + totalSlots
 
@@ -151,11 +200,9 @@ fun CalendarCard() {
                                 )
                             }
                         } else {
-                            // ช่องว่างก่อนเริ่มวันที่ 1
                             Spacer(modifier = Modifier.weight(1f))
                         }
                     }
-                    // เติมช่องว่างท้ายสัปดาห์
                     if (week.size < 7) repeat(7 - week.size) { Spacer(modifier = Modifier.weight(1f)) }
                 }
             }
@@ -174,24 +221,3 @@ fun SummaryCardItem(label: String, amount: String, onAddClick: () -> Unit, modif
         }
     }
 }
-
-@Composable
-fun TransactionItem(title: String, price: String, date: String, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable { onClick() }, // แก้ไข: ใส่ lambda onClick ตรงนี้
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(1.dp)
-    ) {
-        Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Column {
-                Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text(date, fontSize = 10.sp, color = Color.Gray)
-            }
-            Text("$price THB", fontWeight = FontWeight.Bold, color = MainBlue)
-        }
-    }
-}
-

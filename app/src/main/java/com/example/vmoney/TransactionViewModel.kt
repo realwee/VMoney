@@ -29,6 +29,15 @@ class TransactionViewModel(application: Application) : AndroidViewModel(applicat
         return dao.getTotalAmountByCategory(category, TransactionType.EXPENSE)
     }
 
+    // --- OVERALL TOTALS ---
+    fun getTotalIncome(): Flow<Double?> {
+        return dao.getTotalAmount(TransactionType.INCOME)
+    }
+
+    fun getTotalExpense(): Flow<Double?> {
+        return dao.getTotalAmount(TransactionType.EXPENSE)
+    }
+
     fun insertTransaction(transaction: Transaction) {
         viewModelScope.launch(Dispatchers.IO) {
             dao.insertTransaction(transaction)

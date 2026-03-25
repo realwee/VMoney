@@ -45,7 +45,7 @@ fun StoreDetailScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text("รายรับ รายจ่าย", fontSize = 24.sp, color = MainBlue, fontWeight = FontWeight.Bold)
-            Text(storeName, fontSize = 28.sp, color = Color.Red, fontWeight = FontWeight.Bold)
+            Text(storeName, fontSize = 25.sp, color = Color.Red, fontWeight = FontWeight.Bold)
             Text(String.format(Locale.US, "%.2f THB", currentBalance), fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -76,7 +76,8 @@ fun StoreDetailScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column {
-                            Text(transaction.title, fontSize = 14.sp)
+                            val displayText = transaction.note.ifBlank { transaction.title }
+                            Text(displayText, fontSize = 14.sp)
                             Text(dateFormat.format(Date(transaction.date)), fontSize = 12.sp, color = Color.Gray)
                         }
                         Text(

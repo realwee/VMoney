@@ -57,6 +57,8 @@ class MainActivity : ComponentActivity() {
                             )
 
                             1 -> AddTransactionScreen()
+                            2 -> GraphScreen()
+                            3 -> SettingScreen()
                             4 -> {
                                 selectedCategory?.let { category ->
                                     StoreDetailScreen(

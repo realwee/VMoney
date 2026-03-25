@@ -1,0 +1,28 @@
+
+> Configure project :app
+e: file:///C:/Users/Lenovo/Desktop/cp231/VMoney/app/build.gradle.kts:8:28: Unresolved reference: util
+e: file:///C:/Users/Lenovo/Desktop/cp231/VMoney/app/build.gradle.kts:11:31: Unresolved reference: io
+
+FAILURE: Build failed with an exception.
+
+* Where:
+Build file 'C:\Users\Lenovo\Desktop\cp231\VMoney\app\build.gradle.kts' line: 8
+
+* What went wrong:
+Script compilation errors:
+
+  Line 08: val localProperties = java.util.Properties()
+                                      ^ Unresolved reference: util
+
+  Line 11:     localProperties.load(java.io.FileInputStream(localPropertiesFile))
+                                         ^ Unresolved reference: io
+
+2 errors
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 1s

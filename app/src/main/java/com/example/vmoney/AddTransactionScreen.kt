@@ -1,8 +1,19 @@
 package com.example.vmoney
 
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
+import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.launch
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CameraAlt
@@ -11,20 +22,150 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.vmoney.Database.Transaction
+import com.example.vmoney.Database.TransactionCategory
+import com.example.vmoney.Database.TransactionType
+import com.google.ai.client.generativeai.GenerativeModel
+import com.google.ai.client.generativeai.type.content
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddTransactionScreen() {
-    var isIncome by remember { mutableStateOf(true) } // สถานะปุ่ม รายรับ/รายจ่าย
+fun AddTransactionScreen(
+    viewModel: TransactionViewModel = viewModel()
+) {
+    var isIncome by remember { mutableStateOf(true) } 
     var price by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
+    
+    var expanded by remember { mutableStateOf(false) }
+    var selectedCategory by remember { mutableStateOf(TransactionCategory.PRIMARY_STORE) }
+    var isProcessingAI by remember { mutableStateOf(false) }
 
+    // Dialog State
+    var showImagePickerDialog by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val mainBlue = Color(0xFF5EB5F3)
 
+    // AI Helper Function
+    fun processImageWithAI(bitmap: Bitmap) {
+        isProcessingAI = true
+        coroutineScope.launch {
+            try {
+                val generativeModel = GenerativeModel(
+                    modelName = "gemini-1.5-flash",
+                    apiKey = BuildConfig.GEMINI_API_KEY
+                )
+
+                val inputContent = content {
+                    image(bitmap)
+                    text("Extract the total amount (price) from this receipt. Try to also identify what it was for. Return ONLY in format: PRICE|NOTE. For example: 120.50|ซื้อกาแฟและขนมปัง")
+                }
+
+                val response = withContext(Dispatchers.IO) {
+                    generativeModel.generateContent(inputContent)
+                }
+
+                val textResponse = response.text?.trim() ?: ""
+                if (textResponse.contains("|")) {
+                    val parts = textResponse.split("|")
+                    val extractedPrice = parts[0].trim().replace(Regex("[^0-9.]"), "")
+                    val extractedNote = parts[1].trim()
+                    
+                    price = extractedPrice
+                    note = extractedNote
+                    Toast.makeText(context, "AI แยกข้อมูลสำเร็จ", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "AI ไม่สามารถอ่านข้อมูลได้ชัดเจน", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "เกิดข้อผิดพลาด AI: ${e.message}", Toast.LENGTH_SHORT).show()
+            } finally {
+                isProcessingAI = false
+            }
+        }
+    }
+
+    // Camera Launcher
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview()
+    ) { bitmap: Bitmap? ->
+        if (bitmap != null) {
+            processImageWithAI(bitmap)
+        } else {
+            Toast.makeText(context, "ยกเลิกการถ่ายภาพ", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Gallery Launcher
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    val source = ImageDecoder.createSource(context.contentResolver, uri)
+                    ImageDecoder.decodeBitmap(source)
+                } else {
+                    @Suppress("DEPRECATION")
+                    MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+                }
+                
+                // Convert hardware bitmap to software for generic processing if needed
+                val softBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+                processImageWithAI(softBitmap)
+                
+            } catch (e: Exception) {
+                Toast.makeText(context, "ไม่สามารถโหลดรูปภาพได้", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Toast.makeText(context, "ยกเลิกการเลือกภาพ", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // AlertDialog Choices
+    if(showImagePickerDialog) {
+        AlertDialog(
+            onDismissRequest = { showImagePickerDialog = false },
+            title = { Text(text = "เลือกวิธีเพิ่มรูปภาพอัจฉริยะ") },
+            text = { Text(text = "ให้ AI ช่วยวิเคราะห์ราคาและรายการ จากสลิปหรือป้ายราคา") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showImagePickerDialog = false
+                        takePictureLauncher.launch()
+                    }
+                ) {
+                    Text("กล้องถ่ายรูป")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showImagePickerDialog = false
+                        galleryLauncher.launch("image/*")
+                    }
+                ) {
+                    Text("คลังภาพ (Gallery)")
+                }
+            }
+        )
+    }
+
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
@@ -35,7 +176,6 @@ fun AddTransactionScreen() {
             modifier = Modifier.padding(bottom = 24.dp)
         )
 
-        // --- 1. ปุ่มสลับ รายรับ / รายจ่าย (Toggle Button) ---
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -44,25 +184,25 @@ fun AddTransactionScreen() {
                 .padding(4.dp)
         ) {
             Row(modifier = Modifier.fillMaxSize()) {
-                // ปุ่มรายรับ
                 Button(
                     onClick = { isIncome = true },
                     modifier = Modifier.weight(1f).fillMaxHeight(),
                     shape = RoundedCornerShape(20.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isIncome) Color.White else Color.Transparent
-                    )
+                    ),
+                    contentPadding = PaddingValues(0.dp)
                 ) {
                     Text("รายรับ", color = if (isIncome) mainBlue else Color.White)
                 }
-                // ปุ่มรายจ่าย
                 Button(
                     onClick = { isIncome = false },
                     modifier = Modifier.weight(1f).fillMaxHeight(),
                     shape = RoundedCornerShape(20.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (!isIncome) Color.White else Color.Transparent
-                    )
+                    ),
+                    contentPadding = PaddingValues(0.dp)
                 ) {
                     Text("รายจ่าย", color = if (!isIncome) mainBlue else Color.White)
                 }
@@ -71,70 +211,138 @@ fun AddTransactionScreen() {
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // --- 2. ช่องกรอก Price ---
-        TransactionTextField(label = "Price :", value = price, onValueChange = { price = it }, placeholder = "00.00")
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // --- 3. Dropdown Category (ตัวอย่าง) ---
         Column(modifier = Modifier.fillMaxWidth()) {
-            Text("Category :", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+            Text("Price :", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
             OutlinedTextField(
-                value = "ปฐม",
-                onValueChange = {},
-                readOnly = true,
+                value = price,
+                onValueChange = { price = it },
+                placeholder = { Text("00.00", color = Color.LightGray) },
                 modifier = Modifier.fillMaxWidth(),
-                trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = mainBlue,
+                    unfocusedBorderColor = Color.LightGray
+                )
             )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // --- 4. ช่องกรอก Note ---
-        TransactionTextField(label = "note :", value = note, onValueChange = { note = it }, placeholder = "note")
+        val availableCategories = listOf(
+            TransactionCategory.PRIMARY_STORE,
+            TransactionCategory.HOME_STORE,
+            TransactionCategory.SECONDFLOOR_STORE
+        )
+
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text("Category :", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded }
+            ) {
+                OutlinedTextField(
+                    value = selectedCategory.displayName,
+                    onValueChange = {},
+                    readOnly = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(),
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = mainBlue,
+                        unfocusedBorderColor = Color.LightGray
+                    )
+                )
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier.background(Color.White)
+                ) {
+                    availableCategories.forEach { category ->
+                        DropdownMenuItem(
+                            text = { Text(text = category.displayName) },
+                            onClick = {
+                                selectedCategory = category
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text("note :", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+            OutlinedTextField(
+                value = note,
+                onValueChange = { note = it },
+                placeholder = { Text("note", color = Color.LightGray) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = mainBlue,
+                    unfocusedBorderColor = Color.LightGray
+                )
+            )
+        }
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // --- 5. ปุ่ม Camera และ Add ---
+        if (isProcessingAI) {
+            CircularProgressIndicator(color = mainBlue)
+            Text("AI กำลังวิเคราะห์รูปภาพ...", color = mainBlue, modifier = Modifier.padding(top = 8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(
-                onClick = { /* เปิดกล้อง */ },
+                onClick = { 
+                    showImagePickerDialog = true
+                },
                 modifier = Modifier.background(mainBlue, RoundedCornerShape(8.dp))
             ) {
-                Icon(Icons.Default.CameraAlt, contentDescription = null, tint = Color.White)
+                Icon(Icons.Default.CameraAlt, contentDescription = "ถ่ายรูปหรือเลือกถาพ", tint = Color.White)
             }
+            
             Spacer(modifier = Modifier.width(16.dp))
+            
             Button(
-                onClick = { /* บันทึกข้อมูล */ },
+                onClick = {
+                    val amountValue = price.toDoubleOrNull()
+                    if (amountValue != null && amountValue > 0) {
+                        val transaction = Transaction(
+                            title = if (isIncome) "รายรับ" else "รายจ่าย",
+                            amount = amountValue,
+                            type = if (isIncome) TransactionType.INCOME else TransactionType.EXPENSE,
+                            category = selectedCategory,
+                            date = System.currentTimeMillis(),
+                            note = note
+                        )
+                        viewModel.insertTransaction(transaction)
+                        Toast.makeText(context, "บันทึกสำเร็จ!", Toast.LENGTH_SHORT).show()
+                        
+                        price = ""
+                        note = ""
+                    } else {
+                        Toast.makeText(context, "กรุณากรอกราคาให้ถูกต้อง", Toast.LENGTH_SHORT).show()
+                    }
+                },
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = mainBlue),
-                modifier = Modifier.width(100.dp).height(45.dp)
+                modifier = Modifier
+                    .width(100.dp)
+                    .height(45.dp)
             ) {
                 Text("Add", color = Color.White)
             }
         }
-    }
-}
-
-@Composable
-fun TransactionTextField(label: String, value: String, onValueChange: (String) -> Unit, placeholder: String) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(label, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            placeholder = { Text(placeholder, color = Color.LightGray) },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color.LightGray,
-                unfocusedBorderColor = Color.LightGray
-            )
-        )
     }
 }
