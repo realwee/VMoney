@@ -56,7 +56,8 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         setContent {
-            VMoneyTheme {
+            var isDarkMode by mutableStateOf(false)
+            VMoneyTheme(darkTheme = isDarkMode) {
                 // ตัวแปรเก็บหน้าปัจจุบัน (0=Home, 1=Add, 2=Graph, 3=Setting)
                 var currentScreen by remember { mutableStateOf(0) }
                 var selectedCategory by remember { mutableStateOf<com.example.vmoney.Database.TransactionCategory?>(null) }
@@ -96,7 +97,10 @@ class MainActivity : ComponentActivity() {
 
                             1 -> AddTransactionScreen()
                             2 -> GraphScreen()
-                            3 -> SettingScreen()
+                            3 -> SettingScreen(
+                                isDarkMode = isDarkMode,
+                                onDarkModeChange = { isDarkMode = it }
+                            )
                             4 -> {
                                 selectedCategory?.let { category ->
                                     StoreDetailScreen(

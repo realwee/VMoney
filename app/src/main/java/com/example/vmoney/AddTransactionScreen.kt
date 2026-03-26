@@ -31,21 +31,21 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.vmoney.Database.Transaction
 import com.example.vmoney.Database.TransactionCategory
 import com.example.vmoney.Database.TransactionType
-import com.google.ai.client.generativeai.GenerativeModel
-import com.google.ai.client.generativeai.type.content
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTransactionScreen(
     viewModel: TransactionViewModel = viewModel()
 ) {
-    var isIncome by remember { mutableStateOf(true) } 
+    var isIncome by remember { mutableStateOf(true) }
     var price by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
-    
+
     var expanded by remember { mutableStateOf(false) }
     var selectedCategory by remember { mutableStateOf(TransactionCategory.PRIMARY_STORE) }
     var isProcessingAI by remember { mutableStateOf(false) }
@@ -57,53 +57,44 @@ fun AddTransactionScreen(
     val coroutineScope = rememberCoroutineScope()
     val mainBlue = Color(0xFF5EB5F3)
 
-    // AI Helper Function
+    // OCR Helper Function
     fun processImageWithAI(bitmap: Bitmap) {
         isProcessingAI = true
-        coroutineScope.launch {
-            try {
-                val generativeModel = GenerativeModel(
-                    modelName = "gemini-1.5-flash",
-                    apiKey = BuildConfig.GEMINI_API_KEY
-                )
 
-                val inputContent = content {
-                    image(bitmap)
-                    text("Extract all individual items and their prices from this receipt. DO NOT extract the total amount. Respond ONLY with a valid JSON array of objects in this exact format, with no markdown formatting or backticks: [{\"name\": \"Coffee\", \"price\": 50.0}, {\"name\": \"Cake\", \"price\": 70.0}]")
-                }
+        val image = InputImage.fromBitmap(bitmap, 0)
+        val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
 
-                val response = withContext(Dispatchers.IO) {
-                    generativeModel.generateContent(inputContent)
-                }
+        recognizer.process(image)
+            .addOnSuccessListener { visionText ->
+                var maxPrice = 0.0
+                val fullText = visionText.text
 
-                val textResponse = response.text?.trim() ?: ""
-                val cleanJson = textResponse.replace("```json", "").replace("```", "").trim()
+                val priceRegex = Regex("""(\d+[.,]\d{2})""")
+                val allMatches = priceRegex.findAll(fullText)
                 
-                try {
-                    val jsonArray = org.json.JSONArray(cleanJson)
-                    var sumPrice = 0.0
-                    val items = mutableListOf<String>()
-                    
-                    for (i in 0 until jsonArray.length()) {
-                        val obj = jsonArray.getJSONObject(i)
-                        val n = obj.optString("name", "")
-                        val p = obj.optDouble("price", 0.0)
-                        sumPrice += p
-                        if (n.isNotEmpty()) items.add("$n (฿$p)")
+                for (match in allMatches) {
+                    val priceStr = match.value.replace(",", ".")
+                    val priceNum = priceStr.toDoubleOrNull() ?: 0.0
+                    // Consider the largest number on the receipt as the total amount
+                    if (priceNum > maxPrice && priceNum < 1000000.0) {
+                        maxPrice = priceNum
                     }
-                    
-                    price = sumPrice.toString()
-                    note = items.joinToString(", ")
-                    Toast.makeText(context, "AI แยกรายการสินค้าสำเร็จ", Toast.LENGTH_SHORT).show()
-                } catch (e: Exception) {
-                    Toast.makeText(context, "AI ไม่สามารถอ่านข้อมูลเป็นรายการได้", Toast.LENGTH_SHORT).show()
                 }
-            } catch (e: Exception) {
-                Toast.makeText(context, "เกิดข้อผิดพลาด AI: ${e.message}", Toast.LENGTH_SHORT).show()
-            } finally {
+
+                price = if (maxPrice > 0) maxPrice.toString() else ""
+                // No need to fill 'note', the user wants it to be empty for manual entry
+
                 isProcessingAI = false
+                if (maxPrice > 0) {
+                    Toast.makeText(context, "สแกนยอดรวมสำเร็จ!", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "ไม่พบข้อมูลยอดรวม", Toast.LENGTH_SHORT).show()
+                }
             }
-        }
+            .addOnFailureListener { e ->
+                isProcessingAI = false
+                Toast.makeText(context, "เกิดข้อผิดพลาด OCR: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
     }
 
     // Camera Launcher
@@ -130,11 +121,11 @@ fun AddTransactionScreen(
                     @Suppress("DEPRECATION")
                     MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
                 }
-                
+
                 // Convert hardware bitmap to software for generic processing if needed
                 val softBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
                 processImageWithAI(softBitmap)
-                
+
             } catch (e: Exception) {
                 Toast.makeText(context, "ไม่สามารถโหลดรูปภาพได้", Toast.LENGTH_SHORT).show()
             }
@@ -314,16 +305,16 @@ fun AddTransactionScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(
-                onClick = { 
+                onClick = {
                     showImagePickerDialog = true
                 },
                 modifier = Modifier.background(mainBlue, RoundedCornerShape(8.dp))
             ) {
                 Icon(Icons.Default.CameraAlt, contentDescription = "ถ่ายรูปหรือเลือกถาพ", tint = Color.White)
             }
-            
+
             Spacer(modifier = Modifier.width(16.dp))
-            
+
             Button(
                 onClick = {
                     val amountValue = price.toDoubleOrNull()
@@ -338,7 +329,7 @@ fun AddTransactionScreen(
                         )
                         viewModel.insertTransaction(transaction)
                         Toast.makeText(context, "บันทึกสำเร็จ!", Toast.LENGTH_SHORT).show()
-                        
+
                         price = ""
                         note = ""
                     } else {

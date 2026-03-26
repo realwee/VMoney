@@ -17,14 +17,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun SettingScreen() {
-    var isDarkMode by remember { mutableStateOf(false) }
+fun SettingScreen(
+    isDarkMode: Boolean = false,
+    onDarkModeChange: (Boolean) -> Unit = {}
+) {
     var notificationsEnabled by remember { mutableStateOf(true) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8F9FA))
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
         Text(
@@ -35,29 +37,11 @@ fun SettingScreen() {
             modifier = Modifier.padding(bottom = 24.dp, top = 16.dp)
         )
 
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(2.dp),
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Palette, contentDescription = null, tint = MainBlue)
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text("โหมดกลางคืน (Dark Mode)", fontSize = 16.sp)
-                }
-                Switch(checked = isDarkMode, onCheckedChange = { isDarkMode = it })
-            }
-        }
+
 
         Card(
             shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(2.dp),
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
         ) {
@@ -69,7 +53,7 @@ fun SettingScreen() {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Notifications, contentDescription = null, tint = MainBlue)
                     Spacer(modifier = Modifier.width(16.dp))
-                    Text("การแจ้งเตือน (Notifications)", fontSize = 16.sp)
+                    Text("การแจ้งเตือน (Notifications)", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
                 }
                 Switch(checked = notificationsEnabled, onCheckedChange = { notificationsEnabled = it })
             }
@@ -77,7 +61,7 @@ fun SettingScreen() {
 
         Card(
             shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(2.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -89,7 +73,7 @@ fun SettingScreen() {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Info, contentDescription = null, tint = MainBlue)
                     Spacer(modifier = Modifier.width(16.dp))
-                    Text("เกี่ยวกับแอป (About App)", fontSize = 16.sp)
+                    Text("เกี่ยวกับแอป (About App)", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
                 }
                 Text("v1.0.0", color = Color.Gray)
             }

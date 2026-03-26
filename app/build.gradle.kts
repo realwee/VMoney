@@ -89,4 +89,7 @@ dependencies {
 
     // WorkManager for daily notifications
     implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    // ML Kit for Text Recognition (OCR)
+    implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.0")
 }
