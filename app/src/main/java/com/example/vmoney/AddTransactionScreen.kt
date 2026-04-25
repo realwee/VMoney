@@ -11,6 +11,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.launch
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -70,6 +71,7 @@ fun AddTransactionScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val mainBlue = Color(0xFF5EB5F3)
+    val darkBlue = Color(0xFF1976D2)
     val scrollState = rememberScrollState()
 
     fun startScanning(bitmap: Bitmap) {
@@ -79,26 +81,25 @@ fun AddTransactionScreen(
             try {
                 val apiKey = BuildConfig.OPENROUTER_API_KEY
                 
-                // ปรับขนาดเป็น 1920px (High-Res) เพื่อให้ส่งข้อมูลผ่าน API ได้
                 val base64 = withContext(Dispatchers.Default) {
-                    val maxSide = 1920
+                    // ปรับความละเอียดที่ 1280px เพื่อให้ผ่านเกณฑ์ขนาดไฟล์ของ Server NVIDIA (ยังชัดมากสำหรับ OCR)
+                    val maxSide = 1280
                     val scaled = if (bitmap.width > maxSide || bitmap.height > maxSide) {
                         val ratio = if (bitmap.width > bitmap.height) maxSide.toFloat() / bitmap.width else maxSide.toFloat() / bitmap.height
                         Bitmap.createScaledBitmap(bitmap, (bitmap.width * ratio).toInt(), (bitmap.height * ratio).toInt(), true)
                     } else bitmap
-                    
                     val out = ByteArrayOutputStream()
-                    scaled.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                    scaled.compress(Bitmap.CompressFormat.JPEG, 80, out)
                     Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
                 }
                 
                 val results = withContext(Dispatchers.IO) {
-                    val client = OkHttpClient.Builder().connectTimeout(90, TimeUnit.SECONDS).readTimeout(90, TimeUnit.SECONDS).build()
+                    val client = OkHttpClient.Builder().connectTimeout(120, TimeUnit.SECONDS).readTimeout(120, TimeUnit.SECONDS).build()
 
                     val prompt = """
                         Extract items from this receipt. For each item, you MUST return the TOTAL price for that line (Extended Price), NOT the unit price. 
                         Example: If the receipt says 'Pencil 10 x 10.00 = 100.00', you MUST return 100.00.
-                        Return ONLY a raw JSON array: [{"name":"item name","price":100.0}]
+                        Return ONLY a raw JSON array: [{"name":"ชื่อสินค้า","price":100.0}]
                     """.trimIndent()
 
                     val requestJson = JSONObject().apply {
@@ -113,22 +114,19 @@ fun AddTransactionScreen(
                     }
 
                     val request = Request.Builder()
-                        .url(OPENROUTER_URL)
-                        .post(requestJson.toString().toRequestBody("application/json".toMediaType()))
-                        .header("Authorization", "Bearer $apiKey")
-                        .header("HTTP-Referer", "https://vmoney.app")
-                        .build()
+                        .url(OPENROUTER_URL).post(requestJson.toString().toRequestBody("application/json".toMediaType()))
+                        .header("Authorization", "Bearer $apiKey").header("HTTP-Referer", "https://vmoney.app").build()
                     
                     val response = client.newCall(request).execute()
                     val bodyStr = response.body?.string() ?: ""
                     
                     if (!response.isSuccessful) {
-                        val errJson = JSONObject(bodyStr)
-                        throw Exception(errJson.optJSONObject("error")?.optString("message") ?: "Server Error ${response.code}")
+                        val err = JSONObject(bodyStr).optJSONObject("error")?.optString("message") ?: "HTTP ${response.code}"
+                        throw Exception(err)
                     }
 
                     val json = JSONObject(bodyStr)
-                    val choices = json.optJSONArray("choices") ?: throw Exception("AI ไม่ตอบกลับ ลองลดขนาดรูปหรือถ่ายใหม่ครับ")
+                    val choices = json.optJSONArray("choices") ?: throw Exception("NVIDIA AI ไม่ตอบกลับ (ลองใหม่อีกครั้ง)")
                     val content = choices.getJSONObject(0).getJSONObject("message").getString("content")
                     val cleanJson = content.removePrefix("```json").removePrefix("```").removeSuffix("```").trim()
                     val arr = JSONArray(cleanJson)
@@ -142,7 +140,7 @@ fun AddTransactionScreen(
                 scannedItems = results
             } catch (e: Exception) {
                 Log.e(TAG, "Fail: ${e.message}")
-                Toast.makeText(context, "AI Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, e.localizedMessage, Toast.LENGTH_LONG).show()
             } finally {
                 isProcessingAI = false
             }
@@ -161,7 +159,7 @@ fun AddTransactionScreen(
     if (showImagePickerDialog) {
         AlertDialog(
             onDismissRequest = { showImagePickerDialog = false },
-            title = { Text(text = "สแกนด้วย NVIDIA AI (Optimized)") },
+            title = { Text(text = "สแกนด้วย NVIDIA AI") },
             confirmButton = { TextButton(onClick = { showImagePickerDialog = false; cameraLauncher.launch() }) { Text("กล้อง") } },
             dismissButton = { TextButton(onClick = { showImagePickerDialog = false; galleryLauncher.launch("image/*") }) { Text("คลังภาพ") } }
         )
@@ -171,15 +169,15 @@ fun AddTransactionScreen(
         modifier = Modifier.fillMaxSize().verticalScroll(scrollState).padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = "เพิ่มรายการ", fontSize = 24.sp, color = mainBlue, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 24.dp))
+        Text(text = "เพิ่มรายการ", fontSize = 24.sp, color = darkBlue, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 24.dp))
 
         Box(modifier = Modifier.fillMaxWidth().height(50.dp).background(mainBlue.copy(alpha = 0.6f), RoundedCornerShape(25.dp)).padding(4.dp)) {
             Row(modifier = Modifier.fillMaxSize()) {
                 Button(onClick = { isIncome = true }, modifier = Modifier.weight(1f).fillMaxHeight(), shape = RoundedCornerShape(20.dp), colors = ButtonDefaults.buttonColors(containerColor = if (isIncome) Color.White else Color.Transparent), contentPadding = PaddingValues(0.dp)) {
-                    Text("รายรับ", color = if (isIncome) mainBlue else Color.White)
+                    Text("รายรับ", color = if (isIncome) darkBlue else Color.White, fontWeight = FontWeight.Bold)
                 }
                 Button(onClick = { isIncome = false }, modifier = Modifier.weight(1f).fillMaxHeight(), shape = RoundedCornerShape(20.dp), colors = ButtonDefaults.buttonColors(containerColor = if (!isIncome) Color.White else Color.Transparent), contentPadding = PaddingValues(0.dp)) {
-                    Text("รายจ่าย", color = if (!isIncome) mainBlue else Color.White)
+                    Text("รายจ่าย", color = if (!isIncome) darkBlue else Color.White, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -187,11 +185,11 @@ fun AddTransactionScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         Column(modifier = Modifier.fillMaxWidth()) {
-            Text("Price :", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+            Text("Price :", fontWeight = FontWeight.Bold, color = Color.Black, modifier = Modifier.padding(bottom = 8.dp))
             OutlinedTextField(
-                value = price, onValueChange = { price = it }, placeholder = { Text("00.00", color = Color.LightGray) },
+                value = price, onValueChange = { price = it }, placeholder = { Text("00.00", color = Color.Gray) },
                 modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = mainBlue, unfocusedBorderColor = Color.LightGray)
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = darkBlue, unfocusedBorderColor = Color.Gray)
             )
         }
 
@@ -199,15 +197,15 @@ fun AddTransactionScreen(
 
         val cats = listOf(TransactionCategory.PRIMARY_STORE, TransactionCategory.HOME_STORE, TransactionCategory.SECONDFLOOR_STORE)
         Column(modifier = Modifier.fillMaxWidth()) {
-            Text("Category :", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+            Text("Category :", fontWeight = FontWeight.Bold, color = Color.Black, modifier = Modifier.padding(bottom = 8.dp))
             ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
                 OutlinedTextField(
                     value = selectedCategory.displayName, onValueChange = {}, readOnly = true,
                     modifier = Modifier.fillMaxWidth().menuAnchor(), trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                    shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = mainBlue, unfocusedBorderColor = Color.LightGray)
+                    shape = RoundedCornerShape(12.dp), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = darkBlue, unfocusedBorderColor = Color.Gray)
                 )
                 ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, modifier = Modifier.background(Color.White)) {
-                    cats.forEach { DropdownMenuItem(text = { Text(it.displayName) }, onClick = { selectedCategory = it; expanded = false }) }
+                    cats.forEach { DropdownMenuItem(text = { Text(it.displayName, fontWeight = FontWeight.Medium) }, onClick = { selectedCategory = it; expanded = false }) }
                 }
             }
         }
@@ -215,45 +213,45 @@ fun AddTransactionScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Column(modifier = Modifier.fillMaxWidth()) {
-            Text("note :", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+            Text("note :", fontWeight = FontWeight.Bold, color = Color.Black, modifier = Modifier.padding(bottom = 8.dp))
             OutlinedTextField(
-                value = note, onValueChange = { note = it }, placeholder = { Text("note", color = Color.LightGray) },
+                value = note, onValueChange = { note = it }, placeholder = { Text("note", color = Color.Gray) },
                 modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = mainBlue, unfocusedBorderColor = Color.LightGray)
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = darkBlue, unfocusedBorderColor = Color.Gray)
             )
         }
 
         Spacer(modifier = Modifier.height(32.dp))
 
         if (isProcessingAI) { 
-            CircularProgressIndicator(color = mainBlue)
-            Text("AI กำลังวิเคราะห์รูปภาพ...", modifier = Modifier.padding(top = 8.dp))
+            CircularProgressIndicator(color = darkBlue)
+            Text("AI กำลังสแกน...", color = darkBlue, modifier = Modifier.padding(top = 8.dp))
             Spacer(Modifier.height(16.dp)) 
         }
 
         scannedItems?.let { items ->
             Card(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                colors = CardDefaults.cardColors(containerColor = mainBlue.copy(alpha = 0.05f)),
-                border = androidx.compose.foundation.BorderStroke(1.dp, mainBlue.copy(alpha = 0.3f))
+                colors = CardDefaults.cardColors(containerColor = mainBlue.copy(alpha = 0.08f)),
+                border = BorderStroke(2.dp, darkBlue)
             ) {
                 Column(Modifier.padding(16.dp)) {
-                    Text("ผลการสแกน (${items.size})", fontWeight = FontWeight.Bold, color = mainBlue)
-                    items.forEach { Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) { Text(it.name, Modifier.weight(1f)); Text("฿${it.price}") } }
+                    Text("ผลสแกน (${items.size} รายการ)", fontWeight = FontWeight.ExtraBold, color = darkBlue)
+                    items.forEach { Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) { Text(it.name, Modifier.weight(1f), fontWeight = FontWeight.Bold); Text("฿${it.price}", fontWeight = FontWeight.ExtraBold, color = Color(0xFF1B5E20)) } }
                     Button(
                         onClick = {
                             val type = if (isIncome) TransactionType.INCOME else TransactionType.EXPENSE
                             items.forEach { viewModel.insertTransaction(Transaction(title = it.name, amount = it.price, type = type, category = selectedCategory, date = viewModel.selectedDateMillis.value, note = if(note.isBlank()) "สแกนจากใบเสร็จ" else note)) }
                             Toast.makeText(context, "บันทึกเรียบร้อย!", Toast.LENGTH_SHORT).show(); scannedItems = null
                         },
-                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp), colors = ButtonDefaults.buttonColors(containerColor = mainBlue)
-                    ) { Text("บันทึกทั้งหมด", color = Color.White) }
+                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp), colors = ButtonDefaults.buttonColors(containerColor = darkBlue)
+                    ) { Text("บันทึกทั้งหมดลง Database", color = Color.White, fontWeight = FontWeight.Bold) }
                 }
             }
         }
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { showImagePickerDialog = true }, modifier = Modifier.background(mainBlue, RoundedCornerShape(8.dp))) {
+            IconButton(onClick = { showImagePickerDialog = true }, modifier = Modifier.background(darkBlue, RoundedCornerShape(8.dp))) {
                 Icon(Icons.Default.CameraAlt, "สแกน", tint = Color.White)
             }
             Spacer(modifier = Modifier.width(16.dp))
@@ -265,8 +263,8 @@ fun AddTransactionScreen(
                         Toast.makeText(context, "บันทึกสำเร็จ!", Toast.LENGTH_SHORT).show(); price = ""; note = ""
                     }
                 },
-                shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = mainBlue), modifier = Modifier.width(100.dp).height(45.dp)
-            ) { Text("Add") }
+                shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors(containerColor = darkBlue), modifier = Modifier.width(100.dp).height(45.dp)
+            ) { Text("Add", fontWeight = FontWeight.Bold) }
         }
     }
 }
