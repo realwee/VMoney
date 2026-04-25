@@ -15,7 +15,7 @@ interface TransactionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) //insert information
     suspend fun insertTransaction(transaction: Transaction)
 
-    @Query("SELECT * FROM transactions ORDER BY date DESC") //search information
+    @Query("SELECT * FROM transactions ORDER BY date DESC, id DESC") //search information
     fun getAllTransactions(): Flow<List<Transaction>> //Flow<List<Transaction>> connect realtime if we insert information ,the app will update automatically
 
     @Delete
@@ -26,7 +26,7 @@ interface TransactionDao {
     fun getTotalAmount(transactionType: TransactionType): Flow<Double?>
 
     // ดึงข้อมูลรายการของร้านค้านั้นๆ เท่านั้น
-    @Query("SELECT * FROM transactions WHERE category = :category ORDER BY date DESC")
+    @Query("SELECT * FROM transactions WHERE category = :category ORDER BY date DESC, id DESC")
     fun getTransactionsByCategory(category: com.example.vmoney.Database.TransactionCategory): Flow<List<Transaction>>
 
     // คำนวณยอดรวมของร้านค้านั้นๆ แยกตาม รายรับ/รายจ่าย
@@ -34,6 +34,6 @@ interface TransactionDao {
     fun getTotalAmountByCategory(category: com.example.vmoney.Database.TransactionCategory, transactionType: TransactionType): Flow<Double?>
 
     // ดึงข้อมูลรายการของวันที่กำหนด
-    @Query("SELECT * FROM transactions WHERE date >= :startOfDay AND date <= :endOfDay ORDER BY date DESC")
+    @Query("SELECT * FROM transactions WHERE date >= :startOfDay AND date <= :endOfDay ORDER BY date DESC, id DESC")
     fun getTransactionsByDateRange(startOfDay: Long, endOfDay: Long): Flow<List<Transaction>>
 }
