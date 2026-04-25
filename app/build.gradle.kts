@@ -29,6 +29,9 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
+
+        val openRouterApiKey = localProperties.getProperty("OPENROUTER_API_KEY") ?: ""
+        buildConfigField("String", "OPENROUTER_API_KEY", "\"$openRouterApiKey\"")
     }
 
     buildTypes {
@@ -82,8 +85,10 @@ dependencies {
     implementation("androidx.room:room-ktx:$room_version")
     kapt("androidx.room:room-compiler:$room_version")
 
-    // Google Generative AI (Gemini)
-    implementation("com.google.ai.client.generativeai:generativeai:0.7.0")
+    // OkHttp for Gemini REST API calls
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // JSON parsing
+    implementation("org.json:json:20240303")
     // Coil for async image loading
     implementation("io.coil-kt:coil-compose:2.6.0")
 
