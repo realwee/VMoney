@@ -36,4 +36,9 @@ VMoney ถูกออกแบบมาเพื่อแก้ปัญหา�
 *   การอนุญาตสิทธิ์ (Permissions): กล้อง (Camera), การแจ้งเตือน (Notification Listener Access)
 
 ---
+## Wireframe
+<img width="1115" height="658" alt="image" src="https://github.com/user-attachments/assets/aa739559-9705-47a8-a634-094072210c05" />
+<img width="1069" height="697" alt="image" src="https://github.com/user-attachments/assets/770fd312-09de-4bfc-9b87-2854e8de7d55" />
+
+
 
