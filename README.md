@@ -14,14 +14,16 @@ VMoney ถูกออกแบบมาเพื่อแก้ปัญหา�
 *   **📊 Transaction History**: ดูรายการย้อนหลัง เรียงลำดับจากใหม่ไปเก่า และสรุปยอดรวมรายวัน/รายเดือน
 *   **🔒 Local First Storage**: ข้อมูลทั้งหมดถูกเก็บไว้ในอุปกรณ์ของผู้ใช้ผ่าน Room Database 
 
-## 🛠️ เทคโนโลยีที่ใช้ (Tech Stack)
-*   **UI**: [Jetpack Compose](https://developer.android.com/compose) (Modern Android UI toolkit)
-*   **Language**: [Kotlin](https://kotlinlang.org/)
-*   **Database**: [Room Persistence Library](https://developer.android.com/training/data-storage/room)
-*   **Concurrency**: [Kotlin Coroutines & Flow](https://kotlinlang.org/docs/coroutines-overview.html)
-*   **Networking**: [OkHttp](https://square.github.io/okhttp/) สำหรับเชื่อมต่อ OpenRouter API
-*   **AI Engine**: [NVIDIA Nemotron 12B](https://openrouter.ai/models/nvidia/nemotron-nano-12b-v2-vl:free) ผ่าน OpenRouter API
-*   **Dependency Injection**: ViewModel & LiveData
+## 🛠️ เทคโนโลยีและ Library ที่ใช้ (Tech Stack)
+*   **UI Frameowrk**: [Jetpack Compose](https://developer.android.com/compose) (Modern Android UI toolkit)
+*   **Database**: [Room Persistence Library](https://developer.android.com/training/data-storage/room) (สำหรับการเก็บข้อมูลภายในเครื่อง)
+*   **Networking**: [OkHttp](https://square.github.io/okhttp/) (สำหรับเชื่อมต่อ OpenRouter/Gemini API)
+*   **JSON Handling**: [org.json](https://github.com/stleary/JSON-java) (สำหรับ Parse ข้อมูลจาก AI)
+*   **Image Loading**: [Coil](https://coil-kt.github.io/coil/compose/) (แสดงผลรูปภาพประกอบ)
+*   **Background Tasks**: [WorkManager](https://developer.android.com/topic/libraries/architecture/workmanager) (สำหรับจัดการระบบแจ้งเตือน Daily Reminder)
+*   **OCR Engine**: [ML Kit Text Recognition](https://developers.google.com/ml-kit/vision/text-recognition) (สำหรับช่วยอ่านข้อความเบื้องต้น)
+*   **AI Engine**: [NVIDIA Nemotron 12B](https://openrouter.ai/models/nvidia/nemotron-nano-12b-v2-vl:free) ผ่าน API
+*   **Architecture**: ViewModel, LiveData, Flow และ Coroutines
 
 ## ⚙️ การตั้งค่าก่อนใช้งาน (Configuration)
 เพื่อให้ระบบ AI ทำงานได้ คุณต้องมี API Key จาก [OpenRouter](https://openrouter.ai/)
